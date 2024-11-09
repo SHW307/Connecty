@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rapat - Connecty</title>
+    <link rel="stylesheet" href="css/rapat.css" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background-color: #f3f4f6;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .navbar {
+        width: 100%;
+        padding: 10px 20px;
+        background-color: #1a73e8;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .navbar .logo {
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .meeting-options button {
+        background-color: #ffffff;
+        color: #1a73e8;
+        border: none;
+        padding: 8px 12px;
+        font-size: 14px;
+        border-radius: 4px;
+        margin-left: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .meeting-options button:hover {
+        background-color: #e8f0fe;
+      }
+
+      .main {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        max-width: 1200px;
+        padding: 20px;
+        gap: 10px;
+      }
+
+      .video-area {
+        flex: 2;
+        background-color: #222;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 500px;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #videoElement {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Menjaga rasio aspek video */
+      }
+
+      .chat-area {
+        flex: 1;
+        background-color: white;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .chat-header {
+        background-color: #1a73e8;
+        color: white;
+        padding: 10px;
+        font-size: 16px;
+        font-weight: bold;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 10px;
+        overflow-y: auto;
+      }
+
+      .chat-messages .message {
+        padding: 5px 10px;
+        margin: 5px 0;
+        background-color: #e8f0fe;
+        border-radius: 4px;
+      }
+
+      .chat-area input[type="text"] {
+        border: 1px solid #ddd;
+        padding: 8px;
+        width: 100%;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="logo">Connecty Rapat</div>
+      <div class="meeting-options">
+        <button onclick="toggleMicrophone()" id="micButton">🔇 Mikrofon</button>
+        <button onclick="toggleCamera()" id="cameraButton">📷 Kamera</button>
+        <button onclick="toggleScreenShare()" id="screenShareButton">
+          📺 Share Screen
+        </button>
+        <button onclick="showParticipants()">👥 Partisipan</button>
+        <button onclick="toggleChat()">💬 Chat</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="video-area" id="videoArea">
+        <video id="videoElement" width="320" height="240" autoplay></video>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div class="chat-header">Chat</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <input
+          type="text"
+          placeholder="Ketik pesan..."
+          id="chatInput"
+          onkeydown="sendMessage(event)"
+        />
+      </div>
+    </div>
+
+    <script>
+      let micOn = false;
+      let cameraOn = false;
+      let screenSharing = false;
+      let mediaStream;
+      let screenStream;
+      let mediaRecorder;
+
+      const videoElement = document.getElementById("videoElement");
+
+      // Toggle mikrofon
+      async function toggleMicrophone() {
+        if (micOn) {
+          // Matikan mikrofon
+          const tracks = mediaStream.getTracks();
+          tracks.forEach((track) => {
+            if (track.kind === "audio") {
+              track.enabled = false;
+            }
+          });
+          document.getElementById("micButton").textContent = "🔇 Mikrofon";
+        } else {
+          // Aktifkan mikrofon
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: false,
+              audio: true,
+            });
+            videoElement.srcObject = mediaStream;
+            document.getElementById("micButton").textContent =
+              "🔊 Mikrofon Aktif";
+          } catch (err) {
+            alert("Tidak dapat mengakses mikrofon: " + err);
+          }
+        }
+        micOn = !micOn;
+      }
+
+      // Toggle kamera
+      async function toggleCamera() {
+        if (cameraOn) {
+          // Matikan kamera
+          const tracks = mediaStream.getTracks();
+          tracks.forEach((track) => {
+            if (track.kind === "video") {
+              track.stop();
+            }
+          });
+          document.getElementById("cameraButton").textContent = "📷 Kamera";
+        } else {
+          // Aktifkan kamera
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false,
+            });
+            videoElement.srcObject = mediaStream;
+            document.getElementById("cameraButton").textContent =
+              "🎥 Kamera Aktif";
+          } catch (err) {
+            alert("Tidak dapat mengakses kamera: " + err);
+          }
+        }
+        cameraOn = !cameraOn;
+      }
+
+      async function toggleScreenShare() {
+        if (screenSharing) {
+          // Berhenti share screen
+          if (screenStream) {
+            const tracks = screenStream.getTracks();
+            tracks.forEach((track) => track.stop());
+            document.getElementById("screenShareButton").textContent =
+              "📺 Share Screen";
+          }
+        } else {
+          // Mulai share screen
+          try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+            });
+            videoElement.srcObject = screenStream;
+            videoElement.style.objectFit = "contain"; // Menyesuaikan share screen dengan kotak
+            document.getElementById("screenShareButton").textContent =
+              "🔴 Berhenti Share Screen";
+          } catch (err) {
+            alert("Tidak dapat mengakses layar: " + err);
+          }
+        }
+        screenSharing = !screenSharing;
+      }
+
+      // Tampilkan partisipan
+      function showParticipants() {
+        alert("Fitur Partisipan akan muncul di sini.");
+      }
+
+      // Toggle chat area
+      function toggleChat() {
+        const chatArea = document.getElementById("chatArea");
+        chatArea.style.display =
+          chatArea.style.display === "none" ? "block" : "none";
+      }
+
+      // Kirim pesan
+      function sendMessage(event) {
+        if (event.key === "Enter") {
+          const chatInput = document.getElementById("chatInput");
+          const message = chatInput.value;
+          if (message) {
+            const chatMessages = document.getElementById("chatMessages");
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message");
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            chatInput.value = "";
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

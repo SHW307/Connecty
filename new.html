@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapat - Connecty</title>
+    <style>
+        #videoElement {
+            width: 640px;
+            height: 480px;
+            background-color: #000;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Rapat Video Connecty</h2>
+
+    <div>
+        <video id="videoElement" autoplay></video>
+    </div>
+
+    <div class="controls">
+        <button id="toggleCamera" onclick="toggleCamera()">🎥 Nyalakan Kamera</button>
+        <button id="toggleMicrophone" onclick="toggleMicrophone()">🔇 Nyalakan Mikrofon</button>
+        <button id="shareScreen" onclick="shareScreen()">📺 Share Screen</button>
+    </div>
+
+    <script>
+        let videoStream;
+        let micOn = false;
+        let cameraOn = false;
+        let screenSharing = false;
+
+        // Fungsi untuk menyalakan/mematikan kamera
+        async function toggleCamera() {
+            try {
+                if (cameraOn) {
+                    // Matikan kamera jika sudah aktif
+                    let tracks = videoStream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    document.getElementById("toggleCamera").textContent = "🎥 Nyalakan Kamera";
+                    cameraOn = false;
+                } else {
+                    // Nyalakan kamera
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    document.getElementById("videoElement").srcObject = videoStream;
+                    document.getElementById("toggleCamera").textContent = "🎥 Matikan Kamera";
+                    cameraOn = true;
+                }
+            } catch (error) {
+                console.error("Gagal mengakses kamera:", error);
+            }
+        }
+
+        // Fungsi untuk menyalakan/mematikan mikrofon
+        function toggleMicrophone() {
+            micOn = !micOn;
+            const micButton = document.getElementById("toggleMicrophone");
+            if (micOn) {
+                micButton.textContent = "🔊 Mikrofon Aktif";
+                // Menyalakan mikrofon
+                if (videoStream) {
+                    let audioTrack = videoStream.getAudioTracks()[0];
+                    if (audioTrack) audioTrack.enabled = true;
+                }
+            } else {
+                micButton.textContent = "🔇 Mikrofon";
+                // Mematikan mikrofon
+                if (videoStream) {
+                    let audioTrack = videoStream.getAudioTracks()[0];
+                    if (audioTrack) audioTrack.enabled = false;
+                }
+            }
+        }
+
+        // Fungsi untuk melakukan share screen
+        async function shareScreen() {
+            try {
+                if (screenSharing) {
+                    // Matikan share screen
+                    const tracks = videoStream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    document.getElementById("shareScreen").textContent = "📺 Share Screen";
+                    screenSharing = false;
+                } else {
+                    // Mulai share screen
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    document.getElementById("videoElement").srcObject = screenStream;
+                    document.getElementById("shareScreen").textContent = "🔴 Stop Share Screen";
+                    screenSharing = true;
+                }
+            } catch (error) {
+                console.error("Gagal share screen:", error);
+            }
+        }
+    </script>
+</body>
+</html>
